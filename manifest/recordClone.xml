@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>RecordCloneController</members>
+        <members>RecordCloneService</members>
+        <members>RecordCloneServiceTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>recordClone</members>
+        <members>recordCloneNameModal</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>Record_Clone_User</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>62.0</version>
+</Package>

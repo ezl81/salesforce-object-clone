@@ -1,57 +1,160 @@
-# Salesforce DX Project
+# Salesforce Record Clone
 
-Salesforce DX is a development approach that brings source-driven development, team collaboration, and continuous integration to the Salesforce Platform. Instead of working directly in an org through a web browser, you work with metadata as source files in a local DX project, track changes in version control, and deploy through automated processes.
+A Lightning Web Component that copies a record from its record page. It also copies the records that record looks up to, and it can copy the record's related (child) records as well.
 
-This project template gets you started with the tools and structure you need to build Salesforce applications using source control, scratch orgs, and the Salesforce CLI.
+The standard **Clone** button copies one record, and every lookup on the copy still points at the original records. **Record Copy** follows the lookups: it copies the records they point to (and the records those point to, and so on) and wires the new copies together. Masters, users, queues and any objects you choose stay linked to the originals.
 
-## Prerequisites
+## What's included
 
-Before you start, make sure you have:
+| Type                 | Name                     | Purpose                                                                |
+| -------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| LWC                  | `recordClone`            | The **Record Copy** component you drop on a record page                |
+| LWC                  | `recordCloneNameModal`   | Modal that asks for the new record's name and which related records to copy |
+| Apex class           | `RecordCloneController`  | `@AuraEnabled` methods called by the LWC                               |
+| Apex class           | `RecordCloneService`     | All of the copy logic                                                  |
+| Apex class           | `RecordCloneServiceTest` | Unit tests                                                             |
+| Permission set       | `Record_Clone_User`      | Grants access to `RecordCloneController`                               |
+| Manifest             | `manifest/recordClone.xml` | Package manifest listing all of the above                            |
 
-- **Salesforce CLI** - Download from [developer.salesforce.com/tools/salesforcecli](https://developer.salesforce.com/tools/salesforcecli). See [Install Salesforce CLI](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm) for details.
-- **VS Code with Salesforce Extension Pack** - See [Installation Instructions](https://developer.salesforce.com/docs/platform/sfvscode-extensions/guide/install.html) for details. Includes the Agentforce Vibes extension.
-- **A development org** - Sign up for a free Developer Edition org [here](https://developer.salesforce.com/signup).
-- **Dev Hub enabled** (optional, required to create scratch orgs) - You can enable Dev Hub in your development org under Setup > Dev Hub. See [Provide Developers Access to Salesforce DX Tools](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_setup_dx_tools.htm).
+## Installation
 
-## Project Structure
+### Prerequisites
 
-Your DX project follows this structure:
+- [Salesforce CLI](https://developer.salesforce.com/tools/salesforcecli) (`sf`)
+- An org to deploy to (sandbox, Developer Edition, or scratch org). The LWC is built on API version 67.0, so the org must support it.
 
-- **`force-app/main/default/`** - Your metadata source files live in this default package directory. You can configure additional package directories in the `sfdx-project.json` file.
-- **`config/`** - Scratch org definitions and project settings
-- **`scripts/`** - Automation scripts for common tasks
-- **`sfdx-project.json`** - Project manifest that defines package directories, namespace, API version, and other project-level settings
+### 1. Get the source
 
-See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm).
+```bash
+git clone <this-repo-url>
+cd salesforce-object-clone
+```
 
-## Get Started
+### 2. Authorize your org
 
-Ready to start developing? The [Get Started with Salesforce DX](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_get_started_dx.htm) guide walks you through your first project, from creating a scratch org to creating a simple Apex class or LWC to deploying your code to a sandbox.
+```bash
+# Production / Developer Edition
+sf org login web --alias my-org
 
-## Common Salesforce CLI Commands
+# Sandbox
+sf org login web --alias my-org --instance-url https://test.salesforce.com
+```
 
-Here are common CLI commands that you'll use the most:
+### 3. Deploy
 
-- `sf org login web`: Authorize an org
-- `sf org open`: Open your org in a browser
-- `sf org create scratch`: Create a scratch org
-- `sf project deploy start`: Deploy metadata to your org
-- `sf project retrieve start`: Retrieve metadata from your org
-- `sf template generate <artifact>`: Scaffold new components, such as Apex classes and triggers, LWC components, Lightning apps, and more
-- `sf apex <command>`: Run Apex tests, run anonymous Apex blocks, and view logs
-- `sf data <command>`: Work with test data
-- `sf alias <command>`: Manage org aliases
-- `sf config <command>`: Configure CLI settings
+Deploy using the manifest and run the included tests:
 
-## Use Agentforce Vibes to Build Lightning Apps
+```bash
+sf project deploy start --manifest manifest/recordClone.xml --target-org my-org --test-level RunSpecifiedTests --tests RecordCloneServiceTest
+```
 
-Transform your ideas into custom Lightning apps that extend CRM workflows directly in Lightning Experience. Through natural conversations with Agentforce Vibes, implement custom objects and fields, complex business logic, and dynamic UI components. See [Build a Lightning App Using Agentforce Vibes](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/lexapp-overview.html).
+For a sandbox or scratch org you can skip the tests:
 
-## Additional Resources
+```bash
+sf project deploy start --manifest manifest/recordClone.xml --target-org my-org
+```
 
-- [Agentforce Vibes Developer Guide](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/einstein-overview.html)
-- [Salesforce CLI Installation Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/)
-- [Salesforce CLI Plugin Development Guide](https://developer.salesforce.com/docs/platform/salesforce-cli-plugin/guide/conceptual-overview.html)
-- [Salesforce VS Code Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
+### 4. Assign the permission set
+
+Every user who will copy records needs the **Record Clone User** permission set:
+
+```bash
+sf org assign permset --name Record_Clone_User --target-org my-org
+```
+
+Or in Setup: **Users → Permission Sets → Record Clone User → Manage Assignments → Add Assignment**.
+
+The permission set only grants access to the Apex controller. Copies run in user mode, so users also need **Create** access on every object that gets copied and **Read** access on the records being copied. Only fields the user can read and create are copied.
+
+## Adding the component to a record page
+
+1. Open a record of the object you want to copy (for example, an Opportunity).
+2. Click the gear icon → **Edit Page** to open Lightning App Builder.
+3. In the **Components** panel, find **Record Copy** under **Custom**.
+4. Drag it onto the page.
+5. Set the component properties (see below).
+6. Click **Save**. If this is the first time the page is customized, click **Activate** and assign it as the org default, app default, or by app/record type/profile.
+
+The component works on any object's record page.
+
+### Component properties
+
+| Property                               | Default       | Description |
+| -------------------------------------- | ------------- | ----------- |
+| **Card Title**                         | `Copy Record` | Title shown at the top of the card. |
+| **Objects to link instead of copy**    | `Pricebook2`  | Comma separated object API names, e.g. `Pricebook2, Product2, Account`. Lookups to these objects point at the original record instead of a copy. |
+| **Copy depth limit**                   | *(blank)*     | How many levels of lookups to copy. `0` copies only this record, `1` also copies the records it looks up to, and so on. Blank means no limit. Lookups beyond the limit stay linked to the originals. |
+| **Show preview**                       | `true`        | Shows the list of records that will be copied, and the lookups that stay linked, before the user copies. |
+
+## Using the component
+
+1. Open a record whose page has the **Record Copy** component.
+2. If **Show preview** is on, the card lists:
+   - Every record that will be copied, with its object and the lookup path it was reached through (e.g. *Contact › Account ID › Parent Account ID*).
+   - A collapsible list of lookups that stay linked to the original record, and why (see below).
+
+   Click the refresh icon to reload the preview after changing the record.
+3. Click **Copy Record**. A modal opens:
+   - **Name:** enter the new record's name. It starts as the original name. Contacts and Leads show First and Last Name; objects with auto-number names don't ask for one.
+   - **Also copy related records:** tick any child relationships to copy as well, e.g. *Contacts (3)* or *Opportunity Products (5)*. Only relationships that have records are shown.
+   - A summary shows how many records will be copied.
+4. Click **Copy**. When it finishes, a toast shows how many records were created and you are taken to the new record.
+
+If anything fails, the whole copy is rolled back and the error is shown on the card.
+
+## How lookups are handled
+
+For every lookup on a record being copied:
+
+| Lookup to…                                                            | The copy…                              |
+| --------------------------------------------------------------------- | -------------------------------------- |
+| A master record (master-detail, where this record is the detail)      | Links to the original master           |
+| A User, Group/Queue, or UserRole                                      | Links to the original                  |
+| An object listed in **Objects to link instead of copy**               | Links to the original                  |
+| An object that can't be copied (not createable, setup objects)        | Links to the original                  |
+| A record beyond the **Copy depth limit**                              | Links to the original                  |
+| A record the user can't see                                           | Links to the original                  |
+| Anything else                                                         | The looked-up record is copied too, and the copy links to the new copy |
+
+Other behavior:
+
+- A record reached through more than one path is copied only once.
+- Circular lookups (A → B → A) are handled by inserting first and filling in the lookup afterward.
+- Copied related records point at the new record, and their own lookups follow the same rules.
+- **Unique fields are left blank** on the copies, since the same value can't exist twice.
+- Alert-only duplicate rules don't block the copy, because an exact copy is a duplicate by design.
+- Files, notes, attachments, feeds, emails, sharing, history and change-event records are never offered as related records to copy.
+
+## Limits
+
+- At most **500 records** can be copied in one operation. If the lookups reach more, the copy is refused. Use **Copy depth limit** or **Objects to link instead of copy** to narrow it.
+- Each level of lookups uses SOQL queries. Very deep chains of lookups can hit the query limit, and the component will say so before copying.
+- Records that look up to each other only through required fields can't be copied, because neither can be inserted first.
+
+## Using the service from Apex
+
+The copy logic can be called directly:
+
+```apex
+RecordCloneService.CloneOptions options = new RecordCloneService.CloneOptions();
+options.linkedObjects = new Set<String>{ 'Pricebook2' };
+options.maxDepth = null; // no limit
+options.newRecordNames = new Map<String, String>{ 'Name' => 'Acme (Copy)' };
+options.childRelationships = new Set<String>{ 'Contact.AccountId' };
+
+// Preview what will be copied, without changing anything
+RecordCloneService.ClonePlan plan = RecordCloneService.getClonePlan(recordId, options);
+
+// Make the copy
+RecordCloneService.CloneResult result = RecordCloneService.cloneRecord(recordId, options);
+Id newRecordId = result.newRecordId;
+```
+
+## Development
+
+```bash
+npm install          # install lint, prettier and Jest tooling
+npm run lint         # lint the LWC JavaScript
+npm run test:unit    # run LWC Jest tests
+sf apex run test --tests RecordCloneServiceTest --target-org my-org --result-format human
+```
