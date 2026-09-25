@@ -1,0 +1,37 @@
+<template>
+    <lightning-modal-header label={heading}></lightning-modal-header>
+    <lightning-modal-body>
+        <template lwc:if={hasInputs}>
+            <p class="slds-var-m-bottom_small">Enter a name for the new record.</p>
+            <template for:each={inputs} for:item="field">
+                <lightning-input
+                    key={field.apiName}
+                    class="slds-var-m-bottom_x-small"
+                    data-field={field.apiName}
+                    label={field.label}
+                    value={field.value}
+                    required={field.required}
+                    max-length={field.maxLength}
+                    onchange={handleChange}>
+                </lightning-input>
+            </template>
+        </template>
+
+        <template lwc:if={hasChildRelationships}>
+            <lightning-checkbox-group
+                class="slds-var-m-top_medium slds-show"
+                name="childRelationships"
+                label="Also copy related records"
+                options={relationshipOptions}
+                value={selectedRelationships}
+                onchange={handleRelationshipChange}>
+            </lightning-checkbox-group>
+        </template>
+
+        <p class="slds-var-m-top_medium">{summary}</p>
+    </lightning-modal-body>
+    <lightning-modal-footer>
+        <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
+        <lightning-button class="slds-var-m-left_x-small" variant="brand" label="Copy" onclick={handleCopy}></lightning-button>
+    </lightning-modal-footer>
+</template>

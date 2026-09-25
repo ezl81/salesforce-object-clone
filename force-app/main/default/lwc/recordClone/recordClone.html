@@ -1,0 +1,100 @@
+<template>
+    <lightning-card title={title} icon-name="standard:record">
+        <lightning-button-icon
+            slot="actions"
+            icon-name="utility:refresh"
+            alternative-text="Refresh preview"
+            title="Refresh preview"
+            lwc:if={showPreview}
+            onclick={handleRefresh}>
+        </lightning-button-icon>
+
+        <div class="slds-var-p-horizontal_medium clone-container">
+            <template lwc:if={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+
+            <template lwc:if={errorMessage}>
+                <div class="slds-notify slds-notify_alert slds-alert_error slds-var-m-bottom_small" role="alert">
+                    <h2>{errorMessage}</h2>
+                </div>
+            </template>
+
+            <template lwc:if={showPlanDetails}>
+                <p class="slds-text-body_regular slds-var-m-bottom_small">{copySummary}</p>
+
+                <div class="slds-scrollable_x">
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered" aria-label="Records to copy">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col"><div class="slds-truncate" title="Object">Object</div></th>
+                                <th scope="col"><div class="slds-truncate" title="Record">Record</div></th>
+                                <th scope="col"><div class="slds-truncate" title="Reached through">Reached through</div></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={copyRows} for:item="row">
+                                <tr key={row.sourceId}>
+                                    <td>{row.objectLabel}</td>
+                                    <th scope="row" class="clone-wrap">
+                                        <a href={row.url} target="_blank">{row.name}</a>
+                                    </th>
+                                    <td class="clone-wrap">{row.pathLabel}</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <template lwc:if={hasLinked}>
+                    <lightning-button
+                        class="slds-var-m-top_small slds-show"
+                        variant="base"
+                        label={linkedToggleLabel}
+                        icon-name={linkedToggleIcon}
+                        onclick={handleToggleLinked}>
+                    </lightning-button>
+
+                    <template lwc:if={showLinked}>
+                        <div class="slds-scrollable_x slds-var-m-top_x-small">
+                            <table class="slds-table slds-table_cell-buffer slds-table_bordered" aria-label="Lookups kept linked">
+                                <thead>
+                                    <tr class="slds-line-height_reset">
+                                        <th scope="col"><div class="slds-truncate" title="On record">On record</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="Field">Field</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="Linked to">Linked to</div></th>
+                                        <th scope="col"><div class="slds-truncate" title="Why">Why</div></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template for:each={linkedRows} for:item="row">
+                                        <tr key={row.key}>
+                                            <td class="clone-wrap">{row.fromRecordName}</td>
+                                            <td class="clone-wrap">{row.fieldLabel}</td>
+                                            <td class="clone-wrap">
+                                                <a href={row.targetUrl} target="_blank">{row.targetName}</a>
+                                                <div class="slds-text-color_weak slds-text-body_small">{row.targetObjectLabel}</div>
+                                            </td>
+                                            <td class="clone-wrap">{row.reason}</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </template>
+            </template>
+
+            <div class="slds-var-m-top_medium slds-var-m-bottom_small">
+                <lightning-button
+                    variant="brand"
+                    label="Copy Record"
+                    icon-name="utility:copy"
+                    disabled={copyDisabled}
+                    onclick={handleCopy}>
+                </lightning-button>
+            </div>
+        </div>
+    </lightning-card>
+
+</template>

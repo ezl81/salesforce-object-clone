@@ -1,0 +1,8 @@
+.clone-container {
+    position: relative;
+}
+
+.clone-wrap {
+    white-space: normal;
+    word-break: break-word;
+}

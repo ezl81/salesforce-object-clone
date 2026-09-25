@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Record Copy</masterLabel>
+    <description>Make an exact copy of this record, including copies of the records it looks up to. Master records, users and groups stay linked to the originals.</description>
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <property
+                name="cardTitle"
+                type="String"
+                label="Card Title"
+                description="Title displayed at the top of the component."
+                default="Copy Record" />
+            <property
+                name="linkedObjects"
+                type="String"
+                label="Objects to link instead of copy"
+                description="Comma separated object API names. Lookups to these objects point at the original record instead of a copy. Users, groups and master records are always linked."
+                default="Pricebook2" />
+            <property
+                name="maxDepth"
+                type="Integer"
+                label="Copy depth limit"
+                description="How many levels of lookups to copy. 0 copies only this record, 1 also copies the records it looks up to, and so on. Leave blank for no limit." />
+            <property
+                name="showPreview"
+                type="Boolean"
+                label="Show preview"
+                description="List the records that will be copied and the lookups that stay linked before copying."
+                default="true" />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>
