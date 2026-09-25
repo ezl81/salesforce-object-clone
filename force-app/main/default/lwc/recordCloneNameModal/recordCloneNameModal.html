@@ -17,6 +17,49 @@
             </template>
         </template>
 
+        <template lwc:if={hasLookupGroups}>
+            <div class="slds-var-m-top_medium">
+                <div class="slds-form-element__label">Lookups</div>
+                <p class="slds-text-body_small slds-text-color_weak slds-var-m-bottom_x-small">
+                    For each lookup, copy the record it points to, or keep pointing at the original.
+                </p>
+                <div class="slds-is-relative">
+                    <template lwc:if={isRefreshing}>
+                        <lightning-spinner alternative-text="Updating" size="small"></lightning-spinner>
+                    </template>
+                    <template for:each={lookupGroups} for:item="group">
+                        <div key={group.id} class="slds-var-m-bottom_small">
+                            <div class="slds-text-title_caps slds-var-p-vertical_xx-small">{group.heading}</div>
+                            <ul class="slds-has-dividers_top-space">
+                                <template for:each={group.rows} for:item="row">
+                                    <li key={row.key} class="slds-item slds-grid slds-grid_vertical-align-center slds-wrap">
+                                        <div class="slds-col slds-grow slds-var-p-right_small">
+                                            <div class="slds-text-title_bold">{row.fieldLabel}</div>
+                                            <div class="slds-text-body_small slds-text-color_weak">{row.targetName} · {row.targetObjectLabel}</div>
+                                        </div>
+                                        <lightning-radio-group
+                                            class="slds-col slds-grow-none"
+                                            type="button"
+                                            name={row.key}
+                                            data-key={row.key}
+                                            label={row.fieldLabel}
+                                            variant="label-hidden"
+                                            options={choiceOptions}
+                                            value={row.value}
+                                            onchange={handleLookupChoice}>
+                                        </lightning-radio-group>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
+                <template lwc:if={refreshError}>
+                    <p class="slds-text-color_error slds-var-m-top_x-small">{refreshError}</p>
+                </template>
+            </div>
+        </template>
+
         <template lwc:if={hasChildRelationships}>
             <lightning-checkbox-group
                 class="slds-var-m-top_medium slds-show"
@@ -32,6 +75,12 @@
     </lightning-modal-body>
     <lightning-modal-footer>
         <lightning-button label="Cancel" onclick={handleCancel}></lightning-button>
-        <lightning-button class="slds-var-m-left_x-small" variant="brand" label="Copy" onclick={handleCopy}></lightning-button>
+        <lightning-button
+            class="slds-var-m-left_x-small"
+            variant="brand"
+            label="Copy"
+            disabled={copyDisabled}
+            onclick={handleCopy}>
+        </lightning-button>
     </lightning-modal-footer>
 </template>

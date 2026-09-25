@@ -10,6 +10,10 @@
  *    listed in linkedObjects: the copy links to the original record.
  *  - Any other lookup: the looked-up record is copied too (with the same rules, recursively)
  *    and the copy links to that new copy.
+ * Each lookup that could go either way can be switched: CloneOptions.keepLookups points it
+ * at the original record instead of a copy, and CloneOptions.copyLookups copies the record
+ * even when it is past the depth limit or in linkedObjects. ClonePlan.lookupChoices lists
+ * those lookups and which way each one currently goes.
  * A record reached by more than one path is copied once, and circular lookups are handled
  * by inserting first and filling in the lookup afterwards.
  *
@@ -45,16 +49,33 @@ public with sharing class RecordCloneService {
     //Queries kept in reserve for the insert phase
     private static final Integer QUERY_HEADROOM = 5;
 
-    //Child objects never offered as related records to copy. Files, feeds and junctions that
-    //Salesforce creates itself (AccountContactRelation) either can't be copied this way or
-    //would be duplicated. Share, History, Feed and ChangeEvent objects are skipped by suffix.
+    //System objects that are never copied or queried, as a lookup target or as related records.
+    //Most system objects are caught by isSystemObject() from their describe; these are ones the
+    //describe doesn't give away, typically virtual objects backed by an internal data source
+    //that reject ordinary queries (e.g. OutgoingEmail: DataSourceUnsupportedQueryException).
+    private static final Set<String> SYSTEM_OBJECTS = new Set<String>{
+        'activityhistory', 'aggregateresult', 'attachedcontentnote', 'combinedattachment',
+        'contentfolderitem', 'emailmessagerelation', 'emailstatus', 'flowinterview', 'flowrecordrelation',
+        'listemailindividualrecipient', 'lookedupfromactivity', 'name', 'noteandattachment', 'openactivity',
+        'outgoingemail', 'outgoingemailrelation', 'ownedcontentdocument', 'processexception',
+        'processinstancehistory', 'processinstancenode', 'processinstancestep', 'processinstanceworkitem',
+        'recentlyviewed', 'recordaction', 'userrecordaccess'
+    };
+    //Share, History, Feed and ChangeEvent objects, platform events, external objects,
+    //big objects and custom metadata types
+    private static final List<String> SYSTEM_OBJECT_SUFFIXES = new List<String>{
+        'share', 'history', 'feed', 'changeevent', '__e', '__x', '__b', '__mdt'
+    };
+
+    //Child objects never offered as related records to copy, on top of the system objects.
+    //Files, feeds and junctions that Salesforce creates itself (AccountContactRelation)
+    //either can't be copied this way or would be duplicated.
     private static final Set<String> EXCLUDED_CHILD_OBJECTS = new Set<String>{
         'accountcontactrelation', 'attachedcontentdocument', 'attachment', 'collaborationgrouprecord',
-        'combinedattachment', 'contentdistribution', 'contentdocumentlink', 'contentversion',
+        'contentdistribution', 'contentdocumentlink', 'contentversion', 'duplicaterecorditem',
         'emailmessage', 'entitysubscription', 'feedcomment', 'feeditem', 'group', 'groupmember',
         'note', 'processinstance', 'topicassignment', 'user', 'userrole'
     };
-    private static final List<String> EXCLUDED_CHILD_SUFFIXES = new List<String>{ 'share', 'history', 'feed', 'changeevent' };
 
     //Relationship subqueries allowed in one query
     private static final Integer SUBQUERIES_PER_QUERY = 20;
@@ -65,6 +86,9 @@ public with sharing class RecordCloneService {
     public static final String REASON_NOT_COPYABLE = 'This type of record can\'t be copied';
     public static final String REASON_DEPTH = 'Beyond the copy depth limit';
     public static final String REASON_NO_ACCESS = 'Not visible to you';
+    public static final String REASON_KEPT = 'You chose to use the original record';
+    //Linked for one of these reasons, the lookup's record could still be copied
+    private static final Set<String> CHOOSABLE_REASONS = new Set<String>{ REASON_CONFIGURED, REASON_DEPTH, REASON_KEPT };
 
     //Describe results cached per object
     private static Map<Schema.SObjectType, ObjectInfo> objectInfos = new Map<Schema.SObjectType, ObjectInfo>();
@@ -196,7 +220,7 @@ public with sharing class RecordCloneService {
                 }
                 graph.nodes.add(node);
                 for (Schema.DescribeFieldResult fieldDescribe : node.info.referenceFields) {
-                    CloneNode target = planLookup(graph, node, fieldDescribe, linkedObjects, options.maxDepth);
+                    CloneNode target = planLookup(graph, node, fieldDescribe, linkedObjects, options);
                     if (target != null) {
                         nextLevel.add(target);
                     }
@@ -236,7 +260,7 @@ public with sharing class RecordCloneService {
      * @return A new node when the looked-up record still has to be queried, otherwise null
      */
     private static CloneNode planLookup(CloneGraph graph, CloneNode node, Schema.DescribeFieldResult fieldDescribe,
-            Set<String> linkedObjects, Integer maxDepth) {
+            Set<String> linkedObjects, CloneOptions options) {
 
         Object value = node.source.get(fieldDescribe.getName());
         //Already decided - a related record's lookup to the record being copied
@@ -247,7 +271,20 @@ public with sharing class RecordCloneService {
         ObjectInfo targetInfo = getObjectInfo(targetId.getSObjectType());
 
         String reason = getLinkReason(fieldDescribe, targetInfo, linkedObjects);
-        if (reason == null && maxDepth != null && maxDepth >= 0 && node.depth >= maxDepth && !graph.nodesBySourceId.containsKey(targetId)) {
+        //The user's choice for this lookup, when it can go either way
+        String key = lookupKey(node.sourceId, fieldDescribe.getName());
+        Boolean chooseCopy = options.copyLookups != null && options.copyLookups.contains(key);
+        Boolean chooseKeep = options.keepLookups != null && options.keepLookups.contains(key);
+        if (reason == null || reason == REASON_CONFIGURED) {
+            if (chooseKeep) {
+                reason = REASON_KEPT;
+            } else if (chooseCopy) {
+                reason = null;
+            }
+        }
+        Integer maxDepth = options.maxDepth;
+        if (reason == null && !chooseCopy && maxDepth != null && maxDepth >= 0 && node.depth >= maxDepth &&
+                !graph.nodesBySourceId.containsKey(targetId)) {
             reason = REASON_DEPTH;
         }
         if (reason != null) {
@@ -262,6 +299,11 @@ public with sharing class RecordCloneService {
         CloneNode target = new CloneNode(targetId, targetInfo, node.depth + 1, node.path + ' › ' + fieldDescribe.getLabel());
         graph.nodesBySourceId.put(targetId, target);
         return target;
+    }
+
+    //Identifies one lookup on one record, e.g. 003...AAA.AccountId
+    private static String lookupKey(Id recordId, String fieldApiName) {
+        return String.valueOf(recordId) + '.' + fieldApiName;
     }
 
     /**
@@ -383,6 +425,7 @@ public with sharing class RecordCloneService {
                     childNodes.add(childNode);
                 }
                 childNode.copiedLookups.put(relationship.fieldApiName, rootId);
+                childNode.fixedLookups.add(relationship.fieldApiName);
             }
         }
         return childNodes;
@@ -402,8 +445,8 @@ public with sharing class RecordCloneService {
                 continue;
             }
             Schema.DescribeSObjectResult childDescribe = relationship.getChildSObject().getDescribe(SObjectDescribeOptions.DEFERRED);
-            if (isExcludedChildObject(childDescribe.getName()) || !childDescribe.isCreateable() ||
-                    !childDescribe.isQueryable() || !childDescribe.isAccessible()) {
+            if (EXCLUDED_CHILD_OBJECTS.contains(childDescribe.getName().toLowerCase()) || isSystemObject(childDescribe) ||
+                    !childDescribe.isCreateable() || !childDescribe.isQueryable() || !childDescribe.isAccessible()) {
                 continue;
             }
             Schema.DescribeFieldResult fieldDescribe = relationship.getField().getDescribe();
@@ -426,12 +469,23 @@ public with sharing class RecordCloneService {
         return relationships;
     }
 
-    private static Boolean isExcludedChildObject(String objectName) {
-        String lowerName = objectName.toLowerCase();
-        if (EXCLUDED_CHILD_OBJECTS.contains(lowerName)) {
+    /**
+     * isSystemObject()
+     * Objects Salesforce manages itself, which can't be copied and may not even support
+     * ordinary queries: virtual objects without a key prefix (ActivityHistory), hidden and
+     * deprecated objects, custom settings, objects tied to another object (Share, History,
+     * Feed, ChangeEvent), platform events, external objects, big objects, custom metadata
+     * and the SYSTEM_OBJECTS list.
+     */
+    @TestVisible
+    private static Boolean isSystemObject(Schema.DescribeSObjectResult objectDescribe) {
+        String lowerName = objectDescribe.getName().toLowerCase();
+        if (SYSTEM_OBJECTS.contains(lowerName) || String.isBlank(objectDescribe.getKeyPrefix()) ||
+                objectDescribe.isDeprecatedAndHidden() || objectDescribe.isCustomSetting() ||
+                String.isNotBlank(objectDescribe.getAssociateEntityType())) {
             return true;
         }
-        for (String suffix : EXCLUDED_CHILD_SUFFIXES) {
+        for (String suffix : SYSTEM_OBJECT_SUFFIXES) {
             if (lowerName.endsWith(suffix)) {
                 return true;
             }
@@ -505,7 +559,9 @@ public with sharing class RecordCloneService {
                 counts.put(relationship.key, children == null ? 0 : children.size());
             }
             return counts;
-        } catch (QueryException e) {
+        } catch (Exception e) {
+            //Not only QueryException - objects backed by an internal data source throw their own
+            //exceptions (e.g. DataSourceUnsupportedQueryException)
             System.debug('RecordCloneService child count subqueries failed, counting one at a time: ' + e.getMessage());
         }
 
@@ -728,7 +784,8 @@ public with sharing class RecordCloneService {
             apiName = objectDescribe.getName();
             label = objectDescribe.getLabel();
             labelPlural = objectDescribe.getLabelPlural();
-            isCopyable = objectDescribe.isCreateable() && objectDescribe.isQueryable() && objectDescribe.isAccessible();
+            isCopyable = objectDescribe.isCreateable() && objectDescribe.isQueryable() && objectDescribe.isAccessible() &&
+                !isSystemObject(objectDescribe);
             if (!isCopyable) {
                 return;
             }
@@ -756,12 +813,45 @@ public with sharing class RecordCloneService {
                     }
                 }
             }
+            removeTextCountryAndState();
 
             if (nameField != null && fieldsByName.containsKey(nameField)) {
                 nameInputFields.add(fieldsByName.get(nameField));
             } else if (fieldsByName.containsKey('FirstName') && fieldsByName.containsKey('LastName')) {
                 nameInputFields.add(fieldsByName.get('FirstName'));
                 nameInputFields.add(fieldsByName.get('LastName'));
+            }
+        }
+
+        /**
+         * removeTextCountryAndState()
+         * With State and Country/Territory Picklists on, setting both the text field (OtherCountry)
+         * and its code (OtherCountryCode) fails with "Mismatched integration value and ISO code"
+         * whenever the two don't agree. Copy only the code - Salesforce fills in the text from it.
+         * Works for standard (MailingStateCode) and custom (Site__StateCode__s) address fields.
+         */
+        private void removeTextCountryAndState() {
+            Set<String> textFieldNames = new Set<String>();
+            for (String fieldName : fieldsByName.keySet()) {
+                if (fieldName.containsIgnoreCase('CountryCode') || fieldName.containsIgnoreCase('StateCode')) {
+                    textFieldNames.add(fieldName.replace('CountryCode', 'Country').replace('StateCode', 'State'));
+                }
+            }
+            textFieldNames.retainAll(fieldsByName.keySet());
+            if (textFieldNames.isEmpty()) {
+                return;
+            }
+
+            List<Schema.DescribeFieldResult> keptFields = new List<Schema.DescribeFieldResult>();
+            for (Schema.DescribeFieldResult fieldDescribe : copyFields) {
+                if (!textFieldNames.contains(fieldDescribe.getName())) {
+                    keptFields.add(fieldDescribe);
+                }
+            }
+            copyFields = keptFields;
+            for (String fieldName : textFieldNames) {
+                fieldsByName.remove(fieldName);
+                selectFields.remove(fieldName);
             }
         }
     }
@@ -849,7 +939,57 @@ public with sharing class RecordCloneService {
                 plan.records.add(planned);
             }
             plan.linkedReferences = linkedReferences;
+            plan.lookupChoices = buildLookupChoices();
             return plan;
+        }
+
+        /**
+         * buildLookupChoices()
+         * Every lookup that could either be copied or point at the original record, in the
+         * order the records were found and the fields are described. Lookups that can only
+         * go one way (masters, users, records you can't see, a related record's lookup to
+         * the new record) aren't listed.
+         */
+        private List<LookupChoice> buildLookupChoices() {
+            Map<String, LinkedReference> choosableLinks = new Map<String, LinkedReference>();
+            for (LinkedReference linked : linkedReferences) {
+                if (CHOOSABLE_REASONS.contains(linked.reason)) {
+                    choosableLinks.put(lookupKey(linked.fromRecordId, linked.fieldApiName), linked);
+                }
+            }
+
+            List<LookupChoice> choices = new List<LookupChoice>();
+            for (CloneNode node : nodes) {
+                for (Schema.DescribeFieldResult fieldDescribe : node.info.referenceFields) {
+                    String fieldName = fieldDescribe.getName();
+                    String key = lookupKey(node.sourceId, fieldName);
+                    Id targetId;
+                    Boolean copy;
+                    if (node.copiedLookups.containsKey(fieldName) && !node.fixedLookups.contains(fieldName)) {
+                        targetId = node.copiedLookups.get(fieldName);
+                        copy = true;
+                    } else if (choosableLinks.containsKey(key)) {
+                        targetId = choosableLinks.get(key).targetId;
+                        copy = false;
+                    } else {
+                        continue;
+                    }
+                    LookupChoice choice = new LookupChoice();
+                    choice.key = key;
+                    choice.fromRecordId = node.sourceId;
+                    choice.fromRecordName = node.getName();
+                    choice.fromObjectLabel = node.info.label;
+                    choice.fromPath = node.path;
+                    choice.fieldApiName = fieldName;
+                    choice.fieldLabel = fieldDescribe.getLabel();
+                    choice.targetId = targetId;
+                    choice.targetName = getLookupName(node.source, fieldDescribe, targetId);
+                    choice.targetObjectLabel = targetId.getSObjectType().getDescribe(SObjectDescribeOptions.DEFERRED).getLabel();
+                    choice.copy = copy;
+                    choices.add(choice);
+                }
+            }
+            return choices;
         }
     }
 
@@ -875,6 +1015,8 @@ public with sharing class RecordCloneService {
         public Map<String, Id> copiedLookups = new Map<String, Id>();
         //Lookups left blank at insert and filled in afterwards (circular lookups)
         public Set<String> deferredLookups = new Set<String>();
+        //Lookups that always point at the copy - a related record's lookup to the new record
+        public Set<String> fixedLookups = new Set<String>();
 
         public CloneNode(Id sourceId, ObjectInfo info, Integer depth, String path) {
             this.sourceId = sourceId;
@@ -902,6 +1044,11 @@ public with sharing class RecordCloneService {
         public Map<String, String> newRecordNames = new Map<String, String>();
         //Related records to copy too: ChildObject.Field keys from ClonePlan.childRelationships
         public Set<String> childRelationships = new Set<String>();
+        //Lookups to point at the original record instead of a copy, and lookups to copy even
+        //when past the depth limit or in linkedObjects: LookupChoice.key values, e.g. 003...AAA.AccountId.
+        //A record only reached through kept lookups isn't copied.
+        public Set<String> keepLookups = new Set<String>();
+        public Set<String> copyLookups = new Set<String>();
     }
 
     public class ClonePlan {
@@ -915,6 +1062,8 @@ public with sharing class RecordCloneService {
         public List<PlannedRecord> records = new List<PlannedRecord>();
         //Lookups that will point at the original record
         public List<LinkedReference> linkedReferences = new List<LinkedReference>();
+        //Lookups that can either be copied or point at the original record
+        public List<LookupChoice> lookupChoices = new List<LookupChoice>();
         //Related records that can be copied too (only relationships that have records)
         public List<ChildRelationshipSummary> childRelationships = new List<ChildRelationshipSummary>();
     }
@@ -956,6 +1105,23 @@ public with sharing class RecordCloneService {
         public String targetName;
         public String targetObjectLabel;
         public String reason;
+    }
+
+    public class LookupChoice {
+        //Pass back in CloneOptions.keepLookups or copyLookups
+        public String key;
+        public Id fromRecordId;
+        public String fromRecordName;
+        public String fromObjectLabel;
+        //How the record with the lookup was reached, e.g. "Contact › Reports To ID"
+        public String fromPath;
+        public String fieldApiName;
+        public String fieldLabel;
+        public Id targetId;
+        public String targetName;
+        public String targetObjectLabel;
+        //True when the looked-up record will be copied, false when the lookup keeps the original
+        public Boolean copy;
     }
 
     public class CloneResult {

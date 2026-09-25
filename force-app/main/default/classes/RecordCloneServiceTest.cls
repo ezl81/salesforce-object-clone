@@ -285,14 +285,156 @@ private class RecordCloneServiceTest {
     }
 
     @IsTest
+    static void cloneRecord_KeptLookupPointsAtTheOriginal() {
+        Contact source = getSourceContact();
+        Contact manager = [SELECT Id FROM Contact WHERE LastName = :MANAGER_LAST_NAME];
+        Account originalAccount = [SELECT Id FROM Account WHERE Name = :ACCOUNT_NAME];
+        RecordCloneService.CloneOptions options = options(null, null);
+        //Only the Contact's own Account lookup - the manager's still copies the Account
+        options.keepLookups = new Set<String>{ source.Id + '.AccountId' };
+
+        Test.startTest();
+        RecordCloneService.ClonePlan plan = RecordCloneService.getClonePlan(source.Id, options);
+        RecordCloneService.CloneResult result = RecordCloneService.cloneRecord(source.Id, options);
+        Test.stopTest();
+
+        Map<String, RecordCloneService.LookupChoice> choicesByKey = new Map<String, RecordCloneService.LookupChoice>();
+        for (RecordCloneService.LookupChoice choice : plan.lookupChoices) {
+            choicesByKey.put(choice.key, choice);
+        }
+        Assert.isFalse(choicesByKey.get(source.Id + '.AccountId').copy, 'The kept lookup is listed as using the original');
+        Assert.areEqual(originalAccount.Id, choicesByKey.get(source.Id + '.AccountId').targetId);
+        Assert.isTrue(choicesByKey.get(manager.Id + '.AccountId').copy);
+        Assert.isTrue(choicesByKey.get(source.Id + '.ReportsToId').copy);
+        Assert.isFalse(choicesByKey.containsKey(source.Id + '.OwnerId'), 'Users can only stay linked, so there is no choice');
+
+        //Contact, manager, Account (through the manager) and parent Account
+        Assert.areEqual(4, result.copiedCount);
+        Contact copy = [SELECT AccountId, ReportsTo.AccountId FROM Contact WHERE Id = :result.newRecordId];
+        Assert.areEqual(originalAccount.Id, copy.AccountId, 'The kept lookup uses the original Account');
+        Assert.areEqual(result.copiedRecordIds.get(originalAccount.Id), copy.ReportsTo.AccountId, 'The manager copy still gets a copied Account');
+    }
+
+    @IsTest
+    static void cloneRecord_KeepingEveryLookupSkipsTheRecord() {
+        Contact source = getSourceContact();
+        Contact manager = [SELECT Id FROM Contact WHERE LastName = :MANAGER_LAST_NAME];
+        Account originalAccount = [SELECT Id FROM Account WHERE Name = :ACCOUNT_NAME];
+        RecordCloneService.CloneOptions options = options(null, null);
+        options.keepLookups = new Set<String>{ source.Id + '.AccountId', manager.Id + '.AccountId' };
+
+        Test.startTest();
+        RecordCloneService.CloneResult result = RecordCloneService.cloneRecord(source.Id, options);
+        Test.stopTest();
+
+        //The Contact and its manager. The parent Account is only reached through the Account.
+        Assert.areEqual(2, result.copiedCount);
+        Assert.areEqual(1, [SELECT COUNT() FROM Account WHERE Name = :ACCOUNT_NAME], 'The Account is not copied');
+        Assert.areEqual(1, [SELECT COUNT() FROM Account WHERE Name = :PARENT_ACCOUNT_NAME]);
+        Contact copy = [SELECT AccountId, ReportsTo.AccountId FROM Contact WHERE Id = :result.newRecordId];
+        Assert.areEqual(originalAccount.Id, copy.AccountId);
+        Assert.areEqual(originalAccount.Id, copy.ReportsTo.AccountId);
+    }
+
+    @IsTest
+    static void cloneRecord_CopyLookupOverridesTheDepthLimit() {
+        Contact source = getSourceContact();
+        Account originalAccount = [SELECT Id FROM Account WHERE Name = :ACCOUNT_NAME];
+        RecordCloneService.CloneOptions options = options(0, null);
+        options.copyLookups = new Set<String>{ source.Id + '.AccountId' };
+
+        Test.startTest();
+        RecordCloneService.ClonePlan plan = RecordCloneService.getClonePlan(source.Id, options);
+        RecordCloneService.CloneResult result = RecordCloneService.cloneRecord(source.Id, options);
+        Test.stopTest();
+
+        Boolean reportsToListed = false;
+        for (RecordCloneService.LookupChoice choice : plan.lookupChoices) {
+            if (choice.key == source.Id + '.ReportsToId') {
+                reportsToListed = true;
+                Assert.isFalse(choice.copy, 'Past the depth limit, but it could be copied');
+            }
+        }
+        Assert.isTrue(reportsToListed);
+
+        //The Contact and its Account. The manager and parent Account are past the depth limit.
+        Assert.areEqual(2, result.copiedCount);
+        Contact copy = [SELECT AccountId, ReportsToId, Account.ParentId FROM Contact WHERE Id = :result.newRecordId];
+        Assert.areEqual(result.copiedRecordIds.get(originalAccount.Id), copy.AccountId);
+        Assert.areNotEqual(originalAccount.Id, copy.AccountId);
+    }
+
+    @IsTest
+    static void isSystemObject_DetectsObjectsThatCantBeCopied() {
+        Assert.isFalse(RecordCloneService.isSystemObject(Account.SObjectType.getDescribe()));
+        Assert.isFalse(RecordCloneService.isSystemObject(Contact.SObjectType.getDescribe()));
+        Assert.isTrue(RecordCloneService.isSystemObject(AccountShare.SObjectType.getDescribe()), 'Share objects');
+        Assert.isTrue(RecordCloneService.isSystemObject(AccountHistory.SObjectType.getDescribe()), 'History objects');
+        Assert.isTrue(RecordCloneService.isSystemObject(ActivityHistory.SObjectType.getDescribe()), 'Virtual objects');
+        //Not in every org, so looked up by name
+        Schema.SObjectType outgoingEmail = Schema.getGlobalDescribe().get('OutgoingEmail');
+        if (outgoingEmail != null) {
+            Assert.isTrue(RecordCloneService.isSystemObject(outgoingEmail.getDescribe()), 'OutgoingEmail rejects ordinary queries');
+        }
+    }
+
+    @IsTest
+    static void cloneRecord_CopiesCountryAndStateCodesOnly() {
+        //Only applies when State and Country/Territory Picklists are enabled
+        Map<String, Schema.SObjectField> contactFields = Contact.SObjectType.getDescribe().fields.getMap();
+        if (!contactFields.containsKey('OtherCountryCode')) {
+            return;
+        }
+
+        RecordCloneService.ObjectInfo info = new RecordCloneService.ObjectInfo(Contact.SObjectType);
+        Assert.isTrue(info.fieldsByName.containsKey('OtherCountryCode'), 'The code is copied');
+        Assert.isFalse(info.fieldsByName.containsKey('OtherCountry'), 'The text is filled in from the code');
+        Assert.isFalse(info.fieldsByName.containsKey('MailingState'));
+
+        Contact source = getSourceContact();
+        SObject contactToUpdate = source.clone(true, false);
+        contactToUpdate.put('OtherCountryCode', 'US');
+        contactToUpdate.put('OtherStateCode', 'CA');
+        contactToUpdate.put('MailingCountryCode', 'US');
+        update contactToUpdate;
+
+        RecordCloneService.CloneOptions options = new RecordCloneService.CloneOptions();
+        options.maxDepth = 0;
+        options.newRecordNames = new Map<String, String>{ 'FirstName' => 'Country', 'LastName' => COPY_LAST_NAME };
+
+        Test.startTest();
+        RecordCloneService.CloneResult result = RecordCloneService.cloneRecord(source.Id, options);
+        Test.stopTest();
+
+        SObject copy = Database.query('SELECT OtherCountryCode, OtherStateCode, MailingCountryCode FROM Contact WHERE Id = \'' + result.newRecordId + '\'');
+        Assert.areEqual('US', copy.get('OtherCountryCode'));
+        Assert.areEqual('CA', copy.get('OtherStateCode'));
+        Assert.areEqual('US', copy.get('MailingCountryCode'));
+    }
+
+    @IsTest
+    static void getClonePlan_ContactSkipsSystemObjects() {
+        Contact source = getSourceContact();
+
+        Test.startTest();
+        RecordCloneService.ClonePlan plan = RecordCloneService.getClonePlan(source.Id, new RecordCloneService.CloneOptions());
+        Test.stopTest();
+
+        for (RecordCloneService.ChildRelationshipSummary relationship : plan.childRelationships) {
+            Assert.isFalse(relationship.childObjectApiName.startsWithIgnoreCase('OutgoingEmail'), relationship.key);
+            Assert.isFalse(relationship.childObjectApiName.endsWithIgnoreCase('Share'), relationship.key);
+        }
+    }
+
+    @IsTest
     static void controller_ReturnsPlanAndCopies() {
         Contact source = getSourceContact();
 
         Test.startTest();
         RecordCloneService.ClonePlan plan = (RecordCloneService.ClonePlan) JSON.deserialize(
-            RecordCloneController.getClonePlan(source.Id, 'Account, ,Pricebook2', 5), RecordCloneService.ClonePlan.class);
+            RecordCloneController.getClonePlan(source.Id, 'Account, ,Pricebook2', 5, null, null), RecordCloneService.ClonePlan.class);
         RecordCloneService.CloneResult result = (RecordCloneService.CloneResult) JSON.deserialize(
-            RecordCloneController.cloneRecord(source.Id, 'Account', null, '{"LastName":"' + COPY_LAST_NAME + '"}', null),
+            RecordCloneController.cloneRecord(source.Id, 'Account', null, '{"LastName":"' + COPY_LAST_NAME + '"}', null, null, null),
             RecordCloneService.CloneResult.class);
         Test.stopTest();
 
@@ -302,7 +444,7 @@ private class RecordCloneServiceTest {
         Assert.areEqual(COPY_LAST_NAME, copy.LastName);
         Assert.isNull(copy.FirstName, 'A First Name left out of the request is blank on the copy');
 
-        RecordCloneService.CloneOptions options = RecordCloneController.buildOptions('Account, ,Pricebook2', 3);
+        RecordCloneService.CloneOptions options = RecordCloneController.buildOptions('Account, ,Pricebook2', 3, null, null);
         Assert.areEqual(new Set<String>{ 'Account', 'Pricebook2' }, options.linkedObjects);
         Assert.areEqual(3, options.maxDepth);
     }
@@ -311,13 +453,13 @@ private class RecordCloneServiceTest {
     static void controller_WrapsErrors() {
         Test.startTest();
         try {
-            RecordCloneController.cloneRecord(null, null, null, null, null);
+            RecordCloneController.cloneRecord(null, null, null, null, null, null, null);
             Assert.fail('Expected an exception without a record');
         } catch (AuraHandledException e) {
             Assert.areEqual('A record is required to copy.', e.getMessage());
         }
         try {
-            RecordCloneController.getClonePlan(null, null, null);
+            RecordCloneController.getClonePlan(null, null, null, null, null);
             Assert.fail('Expected an exception without a record');
         } catch (AuraHandledException e) {
             Assert.areEqual('A record is required to copy.', e.getMessage());

@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="940" height="470" viewBox="0 0 940 470" role="img" aria-label="Standard Clone compared with Record Copy">
+  <title>Standard Clone compared with Record Copy</title>
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1e293b; }
+    .h { font-size: 16px; font-weight: 700; }
+    .col { font-size: 11px; font-weight: 700; fill: #64748b; letter-spacing: 1px; }
+    .t { font-size: 11px; fill: #64748b; }
+    .n { font-size: 13px; font-weight: 600; }
+    .cap { font-size: 12px; fill: #475569; }
+    .orig { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+    .copy { fill: #ecfdf5; stroke: #059669; stroke-width: 1.5; }
+    .lk { stroke: #64748b; stroke-width: 1.5; fill: none; }
+    .lkc { stroke: #059669; stroke-width: 2; fill: none; }
+    .lkl { stroke: #d97706; stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+  </style>
+  <defs>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+    <marker id="ac" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#059669"/></marker>
+    <marker id="al" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker>
+    <g id="originals">
+      <text class="col" x="120" y="62" text-anchor="middle">ORIGINAL</text>
+      <text class="col" x="340" y="62" text-anchor="middle">COPY</text>
+      <rect class="orig" x="50" y="75" width="140" height="44" rx="6"/>
+      <text class="t" x="62" y="92">Opportunity</text><text class="n" x="62" y="110">Big Deal</text>
+      <rect class="orig" x="50" y="145" width="140" height="44" rx="6"/>
+      <text class="t" x="62" y="162">Account</text><text class="n" x="62" y="180">Acme</text>
+      <rect class="orig" x="50" y="215" width="140" height="44" rx="6"/>
+      <text class="t" x="62" y="232">Account</text><text class="n" x="62" y="250">Acme Holdings</text>
+      <rect class="orig" x="50" y="285" width="140" height="44" rx="6"/>
+      <text class="t" x="62" y="302">User</text><text class="n" x="62" y="320">Sam Rivera</text>
+      <line class="lk" x1="120" y1="119" x2="120" y2="143" marker-end="url(#ag)"/>
+      <line class="lk" x1="120" y1="189" x2="120" y2="213" marker-end="url(#ag)"/>
+      <path class="lk" d="M50,90 C18,90 18,305 48,305" marker-end="url(#ag)"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="940" height="470" rx="12" fill="#ffffff"/>
+
+  <!-- Standard Clone -->
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="440" height="380" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text class="h" x="20" y="32">Standard Clone button</text>
+    <use href="#originals"/>
+    <rect class="copy" x="270" y="75" width="140" height="44" rx="6"/>
+    <text class="t" x="282" y="92">Opportunity</text><text class="n" x="282" y="110">Big Deal (Copy)</text>
+    <path class="lkl" d="M270,104 L193,165" marker-end="url(#al)"/>
+    <path class="lkl" d="M270,112 L193,302" marker-end="url(#al)"/>
+    <text class="cap" x="20" y="352">Only the Opportunity is copied. Its Account</text>
+    <text class="cap" x="20" y="368">lookup still points at the original Acme.</text>
+  </g>
+
+  <!-- Record Copy -->
+  <g transform="translate(480,20)">
+    <rect x="0" y="0" width="440" height="380" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text class="h" x="20" y="32">Record Copy component</text>
+    <use href="#originals"/>
+    <rect class="copy" x="270" y="75" width="140" height="44" rx="6"/>
+    <text class="t" x="282" y="92">Opportunity</text><text class="n" x="282" y="110">Big Deal (Copy)</text>
+    <rect class="copy" x="270" y="145" width="140" height="44" rx="6"/>
+    <text class="t" x="282" y="162">Account</text><text class="n" x="282" y="180">Acme</text>
+    <rect class="copy" x="270" y="215" width="140" height="44" rx="6"/>
+    <text class="t" x="282" y="232">Account</text><text class="n" x="282" y="250">Acme Holdings</text>
+    <line class="lkc" x1="340" y1="119" x2="340" y2="143" marker-end="url(#ac)"/>
+    <line class="lkc" x1="340" y1="189" x2="340" y2="213" marker-end="url(#ac)"/>
+    <path class="lkl" d="M270,110 L193,300" marker-end="url(#al)"/>
+    <text class="cap" x="20" y="352">Acme and its parent are copied too. The Owner</text>
+    <text class="cap" x="20" y="368">is a User, so the copy keeps the original.</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(20,425)">
+    <rect class="orig" x="0" y="0" width="18" height="14" rx="3"/><text class="cap" x="26" y="12">Original record</text>
+    <rect class="copy" x="140" y="0" width="18" height="14" rx="3"/><text class="cap" x="166" y="12">New copy</text>
+    <line class="lk" x1="250" y1="7" x2="290" y2="7" marker-end="url(#ag)"/><text class="cap" x="298" y="12">Lookup</text>
+    <line class="lkc" x1="370" y1="7" x2="410" y2="7" marker-end="url(#ac)"/><text class="cap" x="418" y="12">Lookup to a new copy</text>
+    <line class="lkl" x1="560" y1="7" x2="600" y2="7" marker-end="url(#al)"/><text class="cap" x="608" y="12">Lookup kept on the original record</text>
+  </g>
+</svg>
