@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="510" viewBox="0 0 960 510" role="img" aria-label="Copying a record: review the preview, choose what to copy, open the new copy">
+  <title>Copying a record with Record Copy</title>
+  <style>
+    text { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #181818; }
+    .step { font-size: 13px; font-weight: 700; }
+    .num { font-size: 12px; font-weight: 700; fill: #ffffff; }
+    .cap { font-size: 11.5px; fill: #475569; }
+    .s { font-size: 11px; }
+    .xs { font-size: 10px; }
+    .th { font-size: 10px; font-weight: 700; fill: #444444; }
+    .lbl { font-size: 10px; fill: #706e6b; }
+    .sub { font-size: 9.5px; fill: #706e6b; }
+    .link { fill: #0b5cab; }
+    .w { fill: #ffffff; }
+    .screen { fill: #ffffff; stroke: #c9c9c9; stroke-width: 1.2; }
+    .row { stroke: #e5e5e5; stroke-width: 1; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0176d3"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="510" rx="12" fill="#ffffff"/>
+
+  <!-- Step labels -->
+  <circle cx="30" cy="31" r="10" fill="#0176d3"/><text class="num" x="30" y="35" text-anchor="middle">1</text>
+  <text class="step" x="46" y="36">Review the preview</text>
+  <circle cx="350" cy="31" r="10" fill="#0176d3"/><text class="num" x="350" y="35" text-anchor="middle">2</text>
+  <text class="step" x="366" y="36">Choose what to copy</text>
+  <circle cx="670" cy="31" r="10" fill="#0176d3"/><text class="num" x="670" y="35" text-anchor="middle">3</text>
+  <text class="step" x="686" y="36">Open the new copy</text>
+
+  <!-- Screen 1: component card -->
+  <g transform="translate(20,50)">
+    <rect class="screen" x="0" y="0" width="280" height="400" rx="8"/>
+    <rect x="14" y="14" width="24" height="24" rx="4" fill="#5867e8"/>
+    <rect x="20" y="20" width="12" height="12" rx="1" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+    <text x="46" y="31" font-size="14" font-weight="700">Copy Record</text>
+    <rect x="242" y="14" width="24" height="24" rx="4" fill="#ffffff" stroke="#c9c9c9"/>
+    <path d="M259,26 a5,5 0 1 1 -2,-4" fill="none" stroke="#706e6b" stroke-width="1.5"/>
+    <path d="M258,19 l-1,4 l4,0" fill="none" stroke="#706e6b" stroke-width="1.5"/>
+
+    <text class="s" x="14" y="64">This record and 2 record(s) it looks up to</text>
+    <text class="s" x="14" y="78">will be copied.</text>
+
+    <rect x="14" y="92" width="252" height="22" fill="#f3f3f3"/>
+    <text class="th" x="22" y="107">Object</text>
+    <text class="th" x="94" y="107">Record</text>
+    <text class="th" x="172" y="107">Reached through</text>
+    <line class="row" x1="14" y1="114" x2="266" y2="114"/>
+    <text class="xs" x="22" y="131">Opportunity</text><text class="xs link" x="94" y="131">Big Deal</text><text class="xs" x="172" y="131">This record</text>
+    <line class="row" x1="14" y1="140" x2="266" y2="140"/>
+    <text class="xs" x="22" y="157">Account</text><text class="xs link" x="94" y="157">Acme</text><text class="xs" x="172" y="157">Account ID</text>
+    <line class="row" x1="14" y1="166" x2="266" y2="166"/>
+    <text class="xs" x="22" y="183">Account</text><text class="xs link" x="94" y="183">Acme Holdings</text><text class="xs" x="172" y="183">Account › Parent</text>
+    <line class="row" x1="14" y1="192" x2="266" y2="192"/>
+
+    <text class="s link" x="14" y="218">⌄  Hide 1 lookup(s) kept linked…</text>
+    <text class="lbl" x="30" y="234">Owner → Sam Rivera (User, queue or group)</text>
+
+    <rect x="14" y="252" width="112" height="30" rx="4" fill="#0176d3"/>
+    <text class="s w" x="70" y="271" text-anchor="middle" font-weight="700">Copy Record</text>
+  </g>
+
+  <line x1="306" y1="240" x2="334" y2="240" stroke="#0176d3" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- Screen 2: modal -->
+  <g transform="translate(340,50)">
+    <rect x="0" y="0" width="280" height="400" rx="8" fill="#ffffff"/>
+    <line class="row" x1="0" y1="46" x2="280" y2="46"/>
+    <text x="140" y="29" font-size="15" font-weight="700" text-anchor="middle">Copy Big Deal</text>
+
+    <text class="s" x="16" y="70">Enter a name for the new record.</text>
+    <text class="lbl" x="16" y="92"><tspan fill="#c23934">* </tspan>Opportunity Name</text>
+    <rect x="16" y="98" width="248" height="28" rx="4" fill="#ffffff" stroke="#939393"/>
+    <text x="26" y="117" font-size="12">Big Deal (Copy)</text>
+
+    <text class="lbl" x="16" y="148">Lookups</text>
+    <text x="16" y="165" font-size="9" font-weight="700" fill="#706e6b" letter-spacing="0.6">THIS OPPORTUNITY</text>
+    <line class="row" x1="16" y1="170" x2="264" y2="170"/>
+    <text x="16" y="184" font-size="11" font-weight="700">Account ID</text>
+    <text class="sub" x="16" y="196">Acme · Account</text>
+    <rect x="164" y="175" width="36" height="22" rx="4" fill="#0176d3"/>
+    <text class="xs w" x="182" y="190" text-anchor="middle">Copy</text>
+    <rect x="200" y="175" width="64" height="22" rx="4" fill="#ffffff" stroke="#c9c9c9"/>
+    <text class="xs" x="232" y="190" text-anchor="middle" fill="#0176d3">Use original</text>
+
+    <text x="16" y="219" font-size="9" font-weight="700" fill="#706e6b" letter-spacing="0.6">COPIED ACCOUNT: ACME</text>
+    <line class="row" x1="16" y1="224" x2="264" y2="224"/>
+    <text x="16" y="238" font-size="11" font-weight="700">Parent Account ID</text>
+    <text class="sub" x="16" y="250">Acme Holdings · Account</text>
+    <rect x="164" y="229" width="36" height="22" rx="4" fill="#ffffff" stroke="#c9c9c9"/>
+    <text class="xs" x="182" y="244" text-anchor="middle" fill="#0176d3">Copy</text>
+    <rect x="200" y="229" width="64" height="22" rx="4" fill="#0176d3"/>
+    <text class="xs w" x="232" y="244" text-anchor="middle">Use original</text>
+
+    <text class="lbl" x="16" y="276">Also copy related records</text>
+    <rect x="16" y="284" width="14" height="14" rx="2" fill="#0176d3"/>
+    <path d="M19,291 l3,3 l6,-6" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text class="s" x="38" y="296">Opportunity Products (5)</text>
+    <rect x="16" y="306" width="14" height="14" rx="2" fill="#ffffff" stroke="#939393"/>
+    <text class="s" x="38" y="318">Contact Roles (2)</text>
+
+    <text class="xs" x="16" y="338" fill="#475569">This record and 1 record(s) it looks up to and 5</text>
+    <text class="xs" x="16" y="351" fill="#475569">related record(s) will be copied. 1 lookup(s) will</text>
+    <text class="xs" x="16" y="364" fill="#475569">point at the original record.</text>
+
+    <path d="M0,370 H280 V392 a8,8 0 0 1 -8,8 H8 a8,8 0 0 1 -8,-8 Z" fill="#f3f3f3"/>
+    <line class="row" x1="0" y1="370" x2="280" y2="370"/>
+    <rect x="138" y="374" width="60" height="22" rx="4" fill="#ffffff" stroke="#c9c9c9"/>
+    <text class="s" x="168" y="389" text-anchor="middle" fill="#0176d3">Cancel</text>
+    <rect x="206" y="374" width="60" height="22" rx="4" fill="#0176d3"/>
+    <text class="s w" x="236" y="389" text-anchor="middle" font-weight="700">Copy</text>
+    <rect x="0" y="0" width="280" height="400" rx="8" fill="none" stroke="#c9c9c9" stroke-width="1.2"/>
+  </g>
+
+  <line x1="626" y1="240" x2="654" y2="240" stroke="#0176d3" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- Screen 3: new record -->
+  <g transform="translate(660,50)">
+    <rect class="screen" x="0" y="0" width="280" height="400" rx="8"/>
+    <rect x="10" y="12" width="260" height="50" rx="4" fill="#2e844a"/>
+    <circle cx="26" cy="37" r="9" fill="#ffffff"/>
+    <path d="M21,37 l3,3 l6,-6" fill="none" stroke="#2e844a" stroke-width="2"/>
+    <text class="w" x="42" y="32" font-size="12" font-weight="700">Record copied</text>
+    <text class="w" x="42" y="49" font-size="11">7 record(s) created.</text>
+
+    <rect x="10" y="78" width="260" height="56" rx="4" fill="#f3f3f3"/>
+    <rect x="22" y="90" width="32" height="32" rx="4" fill="#ff5d2d"/>
+    <path d="M30,114 l6,-8 l5,4 l6,-9" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text class="lbl" x="64" y="102">Opportunity</text>
+    <text x="64" y="121" font-size="14" font-weight="700">Big Deal (Copy)</text>
+
+    <text class="lbl" x="18" y="164">Account Name</text>
+    <text x="18" y="181" font-size="12" class="link">Acme</text>
+    <rect x="196" y="168" width="70" height="17" rx="8.5" fill="#ecfdf5" stroke="#059669"/>
+    <text x="231" y="180" font-size="9.5" fill="#047857" text-anchor="middle">new copy</text>
+    <line class="row" x1="18" y1="192" x2="266" y2="192"/>
+
+    <text class="lbl" x="18" y="210">Opportunity Owner</text>
+    <text x="18" y="227" font-size="12" class="link">Sam Rivera</text>
+    <rect x="196" y="214" width="70" height="17" rx="8.5" fill="#fffbeb" stroke="#d97706"/>
+    <text x="231" y="226" font-size="9.5" fill="#b45309" text-anchor="middle">original</text>
+    <line class="row" x1="18" y1="238" x2="266" y2="238"/>
+
+    <text x="18" y="262" font-size="12" font-weight="700">Products (5)</text>
+    <rect x="196" y="250" width="70" height="17" rx="8.5" fill="#ecfdf5" stroke="#059669"/>
+    <text x="231" y="262" font-size="9.5" fill="#047857" text-anchor="middle">new copies</text>
+    <line class="row" x1="18" y1="276" x2="266" y2="276"/>
+
+    <text class="lbl" x="18" y="296">Parent Account (on the new Acme)</text>
+    <text x="18" y="313" font-size="12" class="link">Acme Holdings</text>
+    <rect x="196" y="300" width="70" height="17" rx="8.5" fill="#fffbeb" stroke="#d97706"/>
+    <text x="231" y="312" font-size="9.5" fill="#b45309" text-anchor="middle">original</text>
+  </g>
+
+  <!-- Captions -->
+  <text class="cap" x="20" y="474">The card lists every record that will be</text>
+  <text class="cap" x="20" y="490">copied and the lookups that stay linked.</text>
+  <text class="cap" x="340" y="474">Name it, then choose Copy or Use original</text>
+  <text class="cap" x="340" y="490">for each lookup. Tick related records.</text>
+  <text class="cap" x="660" y="474">Everything is copied in one transaction,</text>
+  <text class="cap" x="660" y="490">then you land on the new record.</text>
+</svg>

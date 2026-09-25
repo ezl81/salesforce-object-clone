@@ -124,7 +124,8 @@ export default class RecordClone extends NavigationMixin(LightningElement) {
         return this.isLoading || !this.plan;
     }
 
-    //Ask for the new record's name and which related records to copy, then copy
+    //Ask for the new record's name, whether each lookup is copied or keeps the original,
+    //and which related records to copy, then copy
     async handleCopy() {
         const choices = await RecordCloneNameModal.open({
             size: 'small',
@@ -132,7 +133,8 @@ export default class RecordClone extends NavigationMixin(LightningElement) {
             heading: `Copy ${this.plan.recordName}`,
             nameFields: this.plan.nameFields,
             childRelationships: this.plan.childRelationships,
-            baseCount: this.copyCount
+            plan: this.plan,
+            planParams: this.apexParams
         });
         //Cancelled or closed
         if (!choices) {
@@ -146,7 +148,9 @@ export default class RecordClone extends NavigationMixin(LightningElement) {
                 await cloneRecord({
                     ...this.apexParams,
                     newRecordNames: JSON.stringify(choices.names),
-                    childRelationships: choices.childRelationships
+                    childRelationships: choices.childRelationships,
+                    keepLookups: choices.keepLookups,
+                    copyLookups: choices.copyLookups
                 })
             );
 
